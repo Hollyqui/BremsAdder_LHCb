@@ -1,17 +1,12 @@
-import ROOT # To read .root files and transform them into pandas dataframes.
-import uproot
 import root_pandas
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd # To list and select the data we want for the neural network.
 
+# Import Files
 filename = "/home/felix/PycharmProjects/Thesis/Data/data/DaVinci_PgunElectrons_081119_1000ev.root"
+df = root_pandas.read_root(filename)
 
-df = root_pandas.read_root('/home/felix/PycharmProjects/Thesis/Data/data/DaVinci_PgunElectrons_081119_1000ev.root')
-#
-# kaon_tree = file["DzTree_Kaon/DecayTree"] # Select data to pick variables from.
-# kaon_dataframe = kaon_tree.pandas.df() # Turns all data into a dataframe that pandas can work with.
-
+# creates all histograms TODO: outlier removal
 df_numpy = np.array(df, ndmin=2)
 for i in range(1,37):
     column = df.columns.values[i]
@@ -25,7 +20,7 @@ for i in range(1,37):
         plt.hist(arr, bins='auto')  # arguments are passed to np.histogram
         plt.title("Histogram of value: " + column)
         fig.savefig('/home/felix/PycharmProjects/Thesis/Graphs/graph' + column + '.png')
-    elif(i != 34):
+    elif(i != 34 and i!=23):
         print(i, "-", column)
         a = df_numpy[:,i]
         fig = plt.figure()
