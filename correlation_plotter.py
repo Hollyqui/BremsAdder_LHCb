@@ -16,7 +16,7 @@ df_numpy = np.array(df)
 
 # correlation that is to be checked
 a = df['eminus_TRUEPT']
-b = df['eminus_PT']
+b = df['eminus_P']
 
 
 # two array of which the correlation is to be checked

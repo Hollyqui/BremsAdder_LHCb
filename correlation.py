@@ -3,8 +3,9 @@ import matplotlib.pyplot as plt
 import root_pandas
 
 # file import
-filename = "/home/felix/PycharmProjects/Thesis/Data/data/DaVinci_PgunElectrons_081119_1000ev.root"
-data = root_pandas.read_root('/home/felix/PycharmProjects/Thesis/Data/data/DaVinci_PgunElectrons_081119_1000ev.root')
+# filename = "/home/felix/PycharmProjects/Thesis/Data/data/DaVinci_PgunElectrons_081119_1000ev.root"
+filename = "/home/felix/PycharmProjects/Thesis/Data/data/full_events_2k.root"
+data = root_pandas.read_root(filename)
 
 
 # plot graph with all linear correlations based on pearson, kendall and spearman metric TODO: outlier removal

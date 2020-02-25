@@ -26,7 +26,7 @@ xe_arr = []
 ye_arr = []
 n_cluster_arr = []
 adder_arr = []
-for i in range(0, min(len(df), 100000000)):
+for i in range(0, min(len(df), 1000000000)):
     # print(df['ECAL_cluster_x_arr'][i])
     for j in df['ECAL_cluster_x_arr'][i]:
         n_cluster_arr.append(df['N_ECAL_clusters'][i])
@@ -43,7 +43,7 @@ for i in range(0, min(len(df), 100000000)):
 e_arr = normalize(e_arr)*100
 fig = plt.figure()
 levels = [1, 2, 3, 4, 5, 6]
-colors = ['red', 'brown', 'yellow', 'green', 'blue']
+colors = ['red', 'brown', 'orange', 'green', 'blue']
 cmap, norm = matplotlib.colors.from_levels_and_colors(levels, colors)
 
 
@@ -91,5 +91,11 @@ plt.scatter(xe_arr_filtered, ye_arr_filtered, c=n_cluster_arr_filtered, s=200, c
 plt.suptitle('x/2 = bremsadd not triggered, o/1 = bremsadd triggered')
 plt.title('colour coding based on number of recorded energy clusters')
 plt.colorbar()
-# fig.savefig('/home/felix/PycharmProjects/Thesis/Graphs/' + "bremsadder errors colour coded n_clusters x=noadd, o=added" + '.png')
+fig.savefig('/home/felix/PycharmProjects/Thesis/Graphs/' + "bremsadder errors colour coded n_clusters x=noadd, o=added" + '.png')
+
+# # following just plots the impacts without filtering/colour coding
+# plt.scatter(x_arr, y_arr, s=e_arr)
+# plt.title('Energy Deposits on 3_CAL from 1000 electrons')
+# plt.ylabel("Displacement from centre (in mm)")
+# plt.xlabel("Displacement from centre (in mm)")
 plt.show()
