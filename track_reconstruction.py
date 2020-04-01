@@ -1,23 +1,20 @@
+'''
+General TODO: - vectorize everything (takes ca. 20mins/10k rows)
+              - clean up so it looks decent
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 import matplotlib.pyplot as plt
+import time
 
 showermax = 12650
 magnet_start = 2500
 magnet_end = 8000
 
-# READ DATAFRAME
-filename = "C:/Users/felix/Documents/University/Thesis/track_electron_set"
-START_ROW = 0
-MAX_ROWS = 20000
-df = pd.read_pickle(filename)
-df = df[START_ROW:MAX_ROWS+START_ROW]
-len(df)
-df = df.reset_index()
-pd.set_option('display.max_columns', 1000)
-print(df.columns.tolist())
+
 
 
 
@@ -52,7 +49,8 @@ def bezier_curve(points, nTimes=1000):
 def reconstruct_velo_tt(df, start, end, smoothness=100, bend_sharpness=1000):
     tracks = []
     for i in range(start, min(len(df),end)):
-        # i=1
+        # simply creates bezier curve based on velo and tt position as well
+        # as the direction
         tt_pos = np.array([df['eminus_TTstate_x'][i], df['eminus_TTstate_y'][i], df['eminus_TTstate_z'][i]])
         tt_proj = np.array([df['eminus_ECAL_TTtrack_x'][i], df['eminus_ECAL_TTtrack_y'][i], showermax])
         tt_proj_unit = tt_proj/np.linalg.norm(tt_proj)
@@ -88,6 +86,8 @@ def reconstruct_velo_tt(df, start, end, smoothness=100, bend_sharpness=1000):
 # smoothness = 100
 '''reconstructs track between ttrack and ecal measurement'''
 def reconstruct_tt_ecal(df, start, end, smoothness=100, bend_sharpness=3500):
+    # creates bezier curve based on ttrack position and direction and ecal position
+    # of electron
     tracks = []
     for i in range(start, min(len(df),end)):
         tt_pos = np.array([df['eminus_TTstate_x'][i], df['eminus_TTstate_y'][i], df['eminus_TTstate_z'][i]])
@@ -97,7 +97,6 @@ def reconstruct_tt_ecal(df, start, end, smoothness=100, bend_sharpness=3500):
         ecal_pos = np.array([df['eminus_ECAL_x'][i],df['eminus_ECAL_y'][i],showermax])
         xvals, yvals, z_vals = bezier_curve([tt_pos, tt_direction, ecal_pos], nTimes=smoothness)
         tracks.append([xvals, yvals, z_vals])
-        #
         # fig = plt.figure(figsize=(12,12))
         # ax = fig.add_subplot(111, projection='3d')
         # x = np.arange(-4000,4000,100)
@@ -124,7 +123,6 @@ def reconstruct_track(df, start, end, smoothness_velo_tt=100, bend_sharpness_vel
 
 '''projects track reconstruciton on the ecal''' # TODO: Clean up and optimize - terrible function
 def project_track(df, track):
-    # track = reconstruct_track(df, 0, 1)[0]
     track = track.T
     delta_track = []
     screen_distance = []
@@ -154,9 +152,9 @@ def project_track(df, track):
     # plt.show()
     return final_proj
 
+'''Finds the origin of a photon given their track, their projection and ONE clusters'''
 def find_origin(track, projections, cluster):
     complete_track = track.T
-    # cluster = [df['eminus_MCphotondaughters_ECAL_X'][i][0],df['eminus_MCphotondaughters_ECAL_Y'][i][0]]
     proj_x = projections[:,0]
     proj_y = projections[:,1]
     cluster_x = cluster[0]
@@ -185,14 +183,12 @@ def find_origin(track, projections, cluster):
     # ax.set_zlim(0,13000)
     # plt.show()
     return origin
-# complete_track = reconstruct_track(df, i, i+1)
-# # feed SINGLE complete track into projection
-# projection = project_track(df,complete_track[0])
-# find_origin()
 
 
 # TODO: Change dataframe column to accept reconstruction instead of truth
-def find_all_origins(df, index,smoothness_velo_tt=10000, smoothness_magnet=10,
+'''Automatically finds all photon origins based on the position of their
+ecal clusters'''
+def find_all_origins(df, index, smoothness_velo_tt=10000, smoothness_magnet=10,
                      bend_sharpness_velo_tt=1000, bend_sharpness_magnet=3500):
 
     # First reconstruct the whole track
@@ -209,7 +205,7 @@ def find_all_origins(df, index,smoothness_velo_tt=10000, smoothness_magnet=10,
 
     return np.array(origins)
 
-
+'''Makes 3D graphs of the track, mctruth photons etc'''
 def plot_3D_graphic(df, i):
     # PLOT THE ECAL SCREEN
     fig = plt.figure(figsize=(12,12))
@@ -233,28 +229,30 @@ def plot_3D_graphic(df, i):
     origins = []
     for j in range(len(df['eminus_MCphotondaughters_ECAL_X'][i])):
         origins.append(find_origin(complete_track[0],projection,[df['eminus_MCphotondaughters_ECAL_X'][i][j],df['eminus_MCphotondaughters_ECAL_Y'][i][j]]))
-        ax.scatter(origins[j][0], origins[j][1], origins[j][2], c='green', marker='x',s=50)
+        ax.scatter(origins[j][0], origins[j][1], origins[j][2], c='green', marker='o',s=50)
+
+
     # PLOT ALL OTHER INFORMATION WE WANT TO INVESTIGATE
     for j in range(len(df['eminus_MCphotondaughters_ECAL_X'][i])):
         ax.plot([df['eminus_MCphotondaughters_orivx_X'][i][j],df['eminus_MCphotondaughters_ECAL_X'][i][j]],[df['eminus_MCphotondaughters_orivx_Y'][i][j],df['eminus_MCphotondaughters_ECAL_Y'][i][j]],[df['eminus_MCphotondaughters_orivx_Z'][i][j],showermax], c='orange')
-        ax.scatter(df['eminus_MCphotondaughters_orivx_X'][i][j],df['eminus_MCphotondaughters_orivx_Y'][i][j],df['eminus_MCphotondaughters_orivx_Z'][i][j], c='orange', marker='x', s=50)
+        ax.scatter(df['eminus_MCphotondaughters_orivx_X'][i][j],df['eminus_MCphotondaughters_orivx_Y'][i][j],df['eminus_MCphotondaughters_orivx_Z'][i][j], c='orange', marker='o', s=50)
         ax.scatter(df['eminus_MCphotondaughters_ECAL_X'][i][j],df['eminus_MCphotondaughters_ECAL_Y'][i][j],showermax, c='orange')
 
     for j in range(len(df['ECAL_cluster_x_arr'][i])):
         ax.scatter(df['ECAL_cluster_x_arr'][i][j], df['ECAL_cluster_y_arr'][i][j], zs=showermax, zdir='z', c="black")
-    ax.scatter(df['eminus_TTstate_x'][i], df['eminus_TTstate_y'][i], df['eminus_TTstate_z'][i], c='red')
-    ax.scatter(df['eminus_velostate_x'][i],df['eminus_velostate_y'][i],df['eminus_velostate_z'][i], c='blue')
+    # ax.scatter(df['eminus_TTstate_x'][i], df['eminus_TTstate_y'][i], df['eminus_TTstate_z'][i], c='red')
+    # ax.scatter(df['eminus_velostate_x'][i],df['eminus_velostate_y'][i],df['eminus_velostate_z'][i], c='blue')
     ax.scatter(df['eminus_ECAL_x'][i], df['eminus_ECAL_y'][i],showermax, c='blue')
 
-    ax.plot([df['eminus_TTstate_x'][i],df['eminus_ECAL_TTtrack_x'][i]], [df['eminus_TTstate_y'][i],df['eminus_ECAL_TTtrack_y'][i]], [df['eminus_TTstate_z'][i],showermax], c='red')
-    ax.plot([df['eminus_velostate_x'][i],df['eminus_ECAL_velotrack_x'][i]],[df['eminus_velostate_y'][i],df['eminus_ECAL_velotrack_y'][i]],[df['eminus_velostate_z'][i],showermax], c='blue')
+    # ax.plot([df['eminus_TTstate_x'][i],df['eminus_ECAL_TTtrack_x'][i]], [df['eminus_TTstate_y'][i],df['eminus_ECAL_TTtrack_y'][i]], [df['eminus_TTstate_z'][i],showermax], c='red')
+    # ax.plot([df['eminus_velostate_x'][i],df['eminus_ECAL_velotrack_x'][i]],[df['eminus_velostate_y'][i],df['eminus_ECAL_velotrack_y'][i]],[df['eminus_velostate_z'][i],showermax], c='blue')
 
 
     ax.plot(complete_track[0][0], complete_track[0][1], complete_track[0][2], c='blue')
     ax.plot(projection[:,0],projection[:,1],projection[:,2], c='yellow')
 
 
-
+    # set plot dimensions
     ax.set_ylabel("Y displacement")
     ax.set_xlabel("X displacement")
     ax.set_zlabel("Distance")
@@ -267,11 +265,32 @@ def plot_3D_graphic(df, i):
 
 #%%
 ############################ PLOTTING AREA ##################################
+# READ DATAFRAME
+try:
+    filename = "C:/Users/felix/Documents/University/Thesis/track_electron_set"
+    df = pd.read_pickle(filename)
+except:
+    filename = "C:/Users/szymo/Documents/track_electron_set"
+    df = pd.read_pickle(filename)
+START_ROW = 0
+MAX_ROWS = 20000
+
+df = df[START_ROW:MAX_ROWS+START_ROW]
+len(df)
+df = df.reset_index()
+pd.set_option('display.max_columns', 1000)
+print(df.columns.tolist())
+
 
 # origins = []
+# time1 = time.perf_counter()
 # for i in range(len(df)):
 #     origins.append(find_all_origins(df, i))
+# time2 = time.perf_counter()
+# time2-time1
 # origins[0]
+
+
 
 n_plots = 5
 start_plot = 0

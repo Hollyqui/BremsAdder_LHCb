@@ -7,7 +7,10 @@ from xgboost import XGBClassifier
 from xgboost import XGBRegressor
 from sklearn.metrics import precision_score, recall_score, accuracy_score
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve
+from sklearn.metrics import auc
 ############# HELPER FUNCTIONS #######################
 
 
@@ -26,6 +29,7 @@ def train_classifier(training_data=None, X=None, y=None, silent=False,
         X = np.array(training_data.drop(['labels'], axis=1))
     # now train
     model = XGBClassifier(silent=silent,
+                          verbose=1,
                           scale_pos_weight=scale_pos_weight,
                           learning_rate=learning_rate,
                           colsample_bytree = colsample_bytree,
@@ -36,7 +40,7 @@ def train_classifier(training_data=None, X=None, y=None, silent=False,
                           max_depth=max_depth,
                           gamma=gamma,
                           early_stopping_rounds = early_stopping_rounds)
-    model.fit(X, y)
+    print(model.fit(X, y))
     return model
 
 def train_regressor(training_data=None, X=None, y=None, silent=False,
@@ -54,6 +58,7 @@ def train_regressor(training_data=None, X=None, y=None, silent=False,
         X = np.array(training_data.drop(['labels'], axis=1))
     # now train
     model = XGBRegressor(silent=silent,
+                         verbose=1,
                          scale_pos_weight=scale_pos_weight,
                          learning_rate=learning_rate,
                          colsample_bytree = colsample_bytree,
@@ -65,7 +70,7 @@ def train_regressor(training_data=None, X=None, y=None, silent=False,
                          gamma=gamma,
                          early_stopping_rounds = early_stopping_rounds)
 
-    model.fit(X, y)
+    print(model.fit(X, y))
     return model
 
 
@@ -112,8 +117,11 @@ def get_metrics(model, X_test, y_test):
     tn, fp, fn, tp = confusion_matrix(y_test, np.argmax(model.predict_proba(X_test), axis=1)).ravel()
     print("True Positives", tp, "\nTrue Negatives:", tn,  "\nFalse Positives:", fp, "\nFalse Negatives", fn)
     print("Total Predictions:", tn+fp+fn+tp)
+    print(classification_report(y_test, preds))
     plot_histograms(model, X_test, y_test)
     plt.bar(range(len(model.feature_importances_)), model.feature_importances_)
+    fpr, tpr, thresholds = roc_curve(y_test, probs.T[1], pos_label=2)
+    print("AUC:", auc(fpr, tpr))
     plt.show()
     # xgb.plot_importance(model)
 ################## XGBOOST MODEL #################################
