@@ -13,9 +13,13 @@ df.columns.tolist()
 
 class Data_handler:
     showermax = 12600
+    df_orig = None
+
+    def __init__(self, df):
+        self.df_orig = df
 
     """This function returns all values that can be used for predictions so filters out all truth"""
-    def return_usable(df):
+    def return_usable(self, df):
         showermax = 12600
         single_X_train = pd.DataFrame({"eminus_nobrem_P": np.array(df['eminus_nobrem_P'])})
         single_X_train['eminus_nobrem_PT'] = df['eminus_nobrem_PT']
@@ -112,6 +116,7 @@ class Data_handler:
         velo_dir = np.array([single_X_train['eminus_ECAL_velotrack_x']-single_X_train['eminus_velostate_x'],single_X_train['eminus_ECAL_velotrack_y']-single_X_train['eminus_velostate_y'],showermax-single_X_train['eminus_velostate_z']]).T
         single_X_train['velo_ttrack_angle'] = Mathematics.get_angle(tt_dir, velo_dir)
 
+
         # now get arrays
         single_X_train['ECAL_cluster_x_arr'] = df['ECAL_cluster_x_arr']
         single_X_train['ECAL_cluster_y_arr'] = df['ECAL_cluster_y_arr']
@@ -128,16 +133,28 @@ class Data_handler:
 
 
     """Checks whether bremadder would add the particle (that happens if it is the the square spanned by the velo/ttrack projection)"""
-    def would_brem_add(df,i,j):
+    def would_brem_add(self, df,i,j):
         if min(df['eminus_ECAL_TTtrack_x'][i],df['eminus_ECAL_velotrack_x'][i])<df['ECAL_cluster_x_arr'][i][j]<max(df['eminus_ECAL_TTtrack_x'][i],df['eminus_ECAL_velotrack_x'][i]):
             if min(df['eminus_ECAL_TTtrack_y'][i],df['eminus_ECAL_velotrack_y'][i])<df['ECAL_cluster_y_arr'][i][j]<max(df['eminus_ECAL_TTtrack_y'][i],df['eminus_ECAL_velotrack_y'][i]):
                 return True
         return False
 
-    df.columns.tolist()
+    """Find whether a cluster belongs to an electron daughter"""
+    #TODO: make sure it doesn't add the electron cluster itself
+
+    def is_daughter(self, df, i, j, max_match=60):
+        new_df = df.copy()
+        if len(self.df_orig['eminus_MCphotondaughters_ECAL_X'][i])>0:
+            dist = Mathematics.get_distance([new_df['ECAL_cluster_x_arr'][i][j],new_df['ECAL_cluster_y_arr'][i][j]],
+                                            [self.df_orig['eminus_MCphotondaughters_ECAL_X'][i],self.df_orig['eminus_MCphotondaughters_ECAL_Y'][i]])
+            if np.min(dist)<max_match:
+                return True
+        return False
+
+    # df.columns.tolist()
 
     """Takes in a dataframe with dictionaries and adds a field for whether a cluster is an electron"""
-    def is_electron(df):
+    def is_electron(self, df):
         new_df = df.copy()
         for i in range(len(new_df)):
             dist = []
@@ -152,7 +169,7 @@ class Data_handler:
         return new_df
 
     """This function filters a number of candidate photons based on their location"""
-    def filter_clusters(df, n_candidates=10):
+    def filter_clusters(self, df, n_candidates=10):
         new_df = df.copy()
         # find the center of ttrack and velotrack
         projection_x = (new_df['eminus_ECAL_TTtrack_x']+new_df['eminus_ECAL_velotrack_x'])/2
@@ -175,7 +192,7 @@ class Data_handler:
         return new_df
 
     """The photon positions don't _exactly_ match up with the cluster positions so we find the best match and make each cluster into a dictionary of it's properties"""
-    def cluster_to_dict(df, matching_region = 50):
+    def cluster_to_dict(self, df, matching_region = 50):
         new_df = df.copy()
         # cluster prop contains all clusters as dictionaries
         cluster_prop = []
@@ -185,8 +202,10 @@ class Data_handler:
             for j in range(len(new_df['ECAL_cluster_x_arr'][i])):
                 cluster_prop[i].append({"x_pos": new_df['ECAL_cluster_x_arr'][i][j],
                                         "y_pos": new_df['ECAL_cluster_y_arr'][i][j],
-                                        "would_brem_add": would_brem_add(new_df, i,j)})
-                dist = Mathematics.get_distance([new_df['ECAL_cluster_x_arr'][i][j],  new_df['ECAL_cluster_y_arr'][i][j]],[new_df['ECAL_photon_x_arr'][i], new_df['ECAL_photon_y_arr'][i]])
+                                        "would_brem_add": self.would_brem_add(new_df, i,j),
+                                        "label": self.is_daughter(new_df, i, j)})
+                dist = Mathematics.get_distance([new_df['ECAL_cluster_x_arr'][i][j],  new_df['ECAL_cluster_y_arr'][i][j]],
+                                                [new_df['ECAL_photon_x_arr'][i], new_df['ECAL_photon_y_arr'][i]])
                 # if the distance is below threshold, consider it a photon and add all information about it
                 if np.min(dist)<matching_region:
                     cluster_prop[i][j]["isPhot"] = True
@@ -204,26 +223,53 @@ class Data_handler:
         new_df['ecal_clusters'] = cluster_prop
         return new_df
 
-    new_df[i:i+1].shape
-    rows[-1].T.shape
-    def prepare_classification(df):
+
+    def prepare_classification(self, df):
         new_df = df.copy()
-        new_df = electron_usable.copy()
+        # first drop all arrays except the one containing the dict of cluster properties since
+        # they can't be fed to the xgbooster
+        new_df = new_df.drop(['ECAL_cluster_x_arr','ECAL_cluster_y_arr','ECAL_cluster_e_arr','ECAL_photon_x_arr','ECAL_photon_y_arr',
+                              'ECAL_photon_sprx_arr','ECAL_photon_spry_arr','ECAL_photon_CL_arr','ECAL_photon_PT_arr'], axis=1)
+
+        # now for each photon we make its own row
         rows = []
         for i in range(len(new_df)):
             for j in range(len(new_df['ecal_clusters'][i])):
-                rows.append(np.array(list(new_df['ecal_clusters'][i][j].values()), ndmin=2))
-                np.concatenate((rows[-1], new_df[i:i+1][0]), axis=1)
-        new_df = pd.DataFrame(data=np.array(rows), index=None, columns=new_df['ecal_clusters'][0][0].keys())
-        np.array(rows).shape
+                rows.append(np.array(list(new_df['ecal_clusters'][i][j].values())))
+                rows[-1]=np.concatenate((rows[-1], new_df.iloc[i]))
+
+        # name columns correctly again
+        col_labels = np.concatenate((np.array(list(new_df['ecal_clusters'][0][0].keys())),new_df.columns))
+        new_df = pd.DataFrame(data=np.array(rows), index=None, columns=col_labels)
+        new_df = new_df.drop(['ecal_clusters'], axis=1)
+        new_df = new_df[new_df.columns.drop(list(new_df.filter(regex='MC')))]
+        new_df = new_df[new_df.columns.drop(list(new_df.filter(regex='TRUE')))]
+        return new_df
 
 
 dataframe = df
 
-usable = Data_handler.return_usable(dataframe)
-filtered_usable = Data_handler.filter_clusters(usable)
-dict_usable = Data_handler.cluster_to_dict(filtered_usable)
-electron_usable = Data_handler.is_electron(dict_usable)
+handler = Data_handler(df)
+usable = handler.return_usable(dataframe)
+filtered_usable = handler.filter_clusters(usable)
+dict_usable = handler.cluster_to_dict(filtered_usable)
+electron_usable = handler.is_electron(dict_usable)
+class_frame = handler.prepare_classification(electron_usable)
+# handler.df_orig.columns.tolist()
+
+
+
+for i in range(1):
+    plt.scatter(handler.df_orig['eminus_MCphotondaughters_ECAL_X'][i],handler.df_orig['eminus_MCphotondaughters_ECAL_Y'][i], marker='3')
+for i in range(10):
+    plt.scatter(class_frame['x_pos'][i], class_frame['y_pos'][i], c='black')
+    plt.scatter(class_frame['x_pos'][i], class_frame['y_pos'][i], c='orange', s=int(class_frame['label'][i]*100))
+class_frame['label'][:10]
+
+
+
+
+class_frame
 
 
 # filtered_usable['ECAL_cluster_y_arr'][0]
