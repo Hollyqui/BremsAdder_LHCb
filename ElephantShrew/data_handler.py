@@ -161,6 +161,12 @@ class Data_handler:
         projection_y = (new_df['eminus_ECAL_TTtrack_y'][i]+new_df['eminus_ECAL_velotrack_y'][i])/2
         return np.abs(Mathematics.get_distance([projection_x, projection_y], [new_df['ECAL_cluster_x_arr'][i][j], new_df['ECAL_cluster_y_arr'][i][j]]))
 
+    def get_diagonal(self, df, i):
+        new_df = df.copy()
+        distance_x = abs(new_df['eminus_ECAL_TTtrack_x'][i]-new_df['eminus_ECAL_velotrack_x'][i])
+        distance_y = abs(new_df['eminus_ECAL_TTtrack_y'][i]-new_df['eminus_ECAL_velotrack_y'][i])
+        return np.sqrt(distance_x**2+distance_y**2)
+
 
     """Sometimes there are daughter photons next to the electron but the cluster is caused by the electron."""
     """For computational pruposes they are removed in an extra step"""
@@ -212,20 +218,23 @@ class Data_handler:
         return new_df
         # df.columns.tolist()
 
-    """For computational speed split the dataframe into subparts"""
+    """For computational speed split the dataframe into subparts. I'm no clue why,"""
+    """But the computational time doesn't increase linearly with the dataset size if"""
+    """This workaround isn't applied"""
     def dictonarize(self, df, matching_region=80):
         new_df = df.copy()
         arr = []
         for i in range(0,len(new_df),500):
             orig = self.df_orig[i:i+500].reset_index().drop(['index'],axis=1)
             arr.append(self.cluster_to_dict(new_df.iloc[i:i+500].reset_index().drop(['index'],axis=1), orig, matching_region))
-            print("Progress:", i+500/len(new_df))
+            print("Progress:", (i+500)/len(new_df))
         test_dict_usable = arr[0]
         for i in range(1, len(arr)):
             test_dict_usable=test_dict_usable.append(arr[i], ignore_index=True)
         return test_dict_usable
 
     """The photon positions don't _exactly_ match up with the cluster positions so we find the best match and make each cluster into a dictionary of it's properties"""
+    """Also assigns labels etc."""
     def cluster_to_dict(self, df, df_orig, matching_region = 80):
         new_df = df.copy()
         # cluster prop contains all clusters as dictionaries
@@ -239,7 +248,8 @@ class Data_handler:
                                         "energy": new_df['ECAL_cluster_e_arr'][i][j],
                                         "would_brem_add": self.would_brem_add(new_df, i,j),
                                         "label": self.is_daughter(new_df, df_orig, i, j, max_match=matching_region),
-                                        "dist": self.get_window_dist(new_df, i, j)})
+                                        "dist": self.get_window_dist(new_df, i, j),
+                                        "window_diagonal": self.get_diagonal(new_df, i)})
                 dist = Mathematics.get_distance([new_df['ECAL_cluster_x_arr'][i][j],  new_df['ECAL_cluster_y_arr'][i][j]],
                                                 [new_df['ECAL_photon_x_arr'][i], new_df['ECAL_photon_y_arr'][i]])
                 # if the distance is below threshold, consider it a photon and add all information about it
