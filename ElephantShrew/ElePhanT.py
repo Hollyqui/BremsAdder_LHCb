@@ -12,40 +12,39 @@ from sklearn.metrics import confusion_matrix
 #%%
 ########################## TRAINING #################################
 #
-# class_frame = pd.read_pickle("dataframes/class_frame_down")
-#
-# # Create Labels/Training DataFrame
-#
-# y_train = class_frame['label']*1
-# x_train = class_frame.drop(['label'], axis=1)*1
-# x_train.shape
-# # train classifier
-#
-# scaling = (len(y_train)-np.sum(y_train))/np.sum(y_train)
-# # scaling = 1
-# # model = xgb.XGBClassifier(verbosity=2)
-#
-# model = xgb.XGBClassifier(learning_rate=0.3, colsample_bytree = 0.4,
-#                           subsample = 0.8, objective='binary:logistic', n_estimators=500,
-#                           reg_alpha = 0.3, max_depth=5, early_stopping_rounds = 10,
-#                           verbosity=2, scale_pos_weight=0.65, alpha=0.3, gamma=5, nrounds=1000)
-# model.fit(np.array(x_train),np.array(y_train).astype(int))
-# np.sum(class_frame['label'])
-# np.sum(test_class_frame['label'])
-# # get statistics
-# xgb.plot_importance(model)
-# model.predict(np.array(x_train))
-# tn, fp, fn, tp = confusion_matrix(np.array(y_train).astype(int), np.argmax(model.predict_proba(np.array(x_train)), axis=1)).ravel()
-# print("True Positives", tp, "\nTrue Negatives:", tn,  "\nFalse Positives:", fp, "\nFalse Negatives", fn)
-#
-# print("Total Predictions:", tn+fp+fn+tp)
-# model.save_model('ElePhant_Classifier.model')
+class_frame = pd.read_pickle("dataframes/c_class_frame_down")
 
-#
-#
-# ########################## SVM ###########################################
-#
-#
+# Create Labels/Training DataFrame
+
+y_train = class_frame['label']*1
+x_train = class_frame.drop(['label'], axis=1)*1
+x_train.shape
+# train classifier
+
+scaling = (len(y_train)-np.sum(y_train))/np.sum(y_train)
+# scaling = 1
+# model = xgb.XGBClassifier(verbosity=2)
+
+model = xgb.XGBClassifier(learning_rate=0.3, colsample_bytree = 0.4,
+                          subsample = 0.8, objective='binary:logistic', n_estimators=5000,
+                          reg_alpha = 0.3, max_depth=5, early_stopping_rounds = 10,
+                          verbosity=2, scale_pos_weight=0.65, alpha=0.3, gamma=5, nrounds=1000)
+model.fit(np.array(x_train),np.array(y_train).astype(int))
+np.sum(class_frame['label'])
+np.sum(test_class_frame['label'])
+# get statistics
+xgb.plot_importance(model)
+model.predict(np.array(x_train))
+tn, fp, fn, tp = confusion_matrix(np.array(y_train).astype(int), np.argmax(model.predict_proba(np.array(x_train)), axis=1)).ravel()
+print("True Positives", tp, "\nTrue Negatives:", tn,  "\nFalse Positives:", fp, "\nFalse Negatives", fn)
+
+print("Total Predictions:", tn+fp+fn+tp)
+model.save_model('ElePhant_Classifier_MT.model')
+
+
+
+
+
 # #%%
 #
 #
@@ -63,10 +62,11 @@ test_class_frame = pd.read_pickle("dataframes/test_class_frame")
 model = xgb.XGBClassifier({'nthread':4}) #init model
 # model.load_model("C:/Users/felix/Documents/University/Thesis/ElephantShrew/ElePhant_Classifier_Competitive.model")
 
-model.load_model("C:/Users/felix/Documents/University/Thesis/ElephantShrew/ElePhant_Classifier_Competitive.model")
+model.load_model("C:/Users/felix/Documents/University/Thesis/ElephantShrew/ElePhant_Classifier.model")
 
 predicted_frame_test = test_handler.assign_prediction(test_electron_usable, model, test_class_frame)
 
+xgb.plot_importance(model)
 
 y_test = test_class_frame['label']*1
 x_test = test_class_frame.drop(['label'], axis=1)*1
@@ -332,7 +332,7 @@ brem_error_hist = ax.hist(brem_errors, alpha=0.5, range=(-5e3,5e3), color='blue'
 ### let's make a histogram of the differences in energy
 # brem_errors = np.concatenate((brem_fp, np.multiply(-1,brem_fn),np.multiply(0,brem_tp)))
 #
-noise = 0.3
+noise = 0.2
 bias = -0.05
 background = 0.07
 # np.multiply(1+ (np.random.normal(size=len(brem_fp))*noise+bias),brem_fp)
@@ -352,6 +352,7 @@ elephant_errors = np.concatenate((np.multiply(1+ (np.random.normal(size=len(elep
                                   np.multiply(np.random.normal(size=len(elephant_tp))*noise+bias,elephant_tp),
                                   random_error))
 ax.hist(elephant_errors, alpha=0.5, range=(-5e3,5e3), color='orange', bins=50, label='ElePhanT')
+
 ax.legend()
 plt.xlabel("Approximated Momentum Resolution")
 plt.title("Momentum Resolution Improvement")
@@ -363,7 +364,7 @@ elephant_avg = np.average(np.abs(elephant_errors))
 brem_std = np.std(brem_errors)
 elephant_std = np.std(elephant_errors)
 elephant_std/brem_std
-elephant_avg/brem_avg
+elephant_avg**2/brem_avg**2
 brem_std
 # np.std(brem_resolution)
 fig, ax = plt.subplots()

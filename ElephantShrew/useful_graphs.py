@@ -12,7 +12,7 @@ filename = "C:/Users/felix/Documents/University/Thesis/big_track_electron_set_do
 # test_df.to_pickle("plotting_orig_df")
 test_df = pd.read_pickle("plotting_orig_df")
 test_handler = Data_handler(test_df)
-
+test_df.columns.tolist()
 
 test_df.columns.tolist()
 

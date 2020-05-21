@@ -1,5 +1,6 @@
 from dataloader import Data_loader
 from mathematics import Mathematics
+from track_reconstruction import *
 import pandas as pd
 import numpy as np
 
@@ -310,13 +311,10 @@ class Data_handler:
         return new_df
 
     """Creates a frame use to train a regressor to predict the true energy"""
-    def calc_frame(self, df, n_cand = 3):
+    def calc_frame(self, df, n_cand = 3, with_track=False):
         df_orig = self.df_orig
         new_df = df.copy()
-        # to remove:
-        # new_df = dict_frame.copy()
-        # df_orig = df.copy()
-        # n_cand= 3
+
 
 
         # add the true moment as a label
@@ -327,7 +325,6 @@ class Data_handler:
         # new_df = new_df.reset_index().drop(['index'], axis=1)
 
         #sort particles so that high xgb predictions are first (more relevant)
-
         # for computational reasons make them into np array first
         ecal_clusters = np.array(new_df['ecal_clusters'])
         # get top n_cand most likely clusters and delete rest
@@ -335,6 +332,34 @@ class Data_handler:
             ecal_clusters[i] = sorted(ecal_clusters[i], key=lambda k: k['xgb_pred'], reverse=True)[:n_cand]
         new_df['ecal_clusters'] = ecal_clusters
 
+        if with_track:
+            # reconstruct tracks for the selected clusters
+            tracks = reconstruct_track(new_df, start=0, end=len(new_df))
+            for i in range(len(new_df)):
+                proj = project_track(new_df, tracks[i])
+                for j in range(len(new_df["ecal_clusters"][i])):
+                    origin_x, origin_y, origin_z = find_origin(tracks[i], proj, [new_df["ecal_clusters"][i][j]["x_pos"],new_df["ecal_clusters"][i][j]["y_pos"]])
+
+                    dz = showermax-origin_z
+                    dx = new_df["ecal_clusters"][i][j]["x_pos"]-origin_x
+                    dy = new_df["ecal_clusters"][i][j]["y_pos"]-origin_y
+
+                    sx = dx / dz
+                    sy = dy / dz
+                    sz = 1.0
+                    gamma = 1.0 / np.sqrt(sx**2 + sy**2 + sz**2 )
+
+                    orig_gradient = np.sqrt(new_df["ecal_clusters"][i][j]["x_pos"]**2+new_df["ecal_clusters"][i][j]["y_pos"]**2)/showermax
+                    new_gradient = np.sqrt(dx**2+dy**2)/abs(dz)
+
+                    scaled_energy = (new_gradient/orig_gradient)*new_df["ecal_clusters"][i][j]["energy"]
+                    # prevent infinities
+                    if scaled_energy > 1e5:
+                        scaled_energy=0
+                    new_df["ecal_clusters"][i][j]["scaled_energy"] = scaled_energy
+                    new_df["ecal_clusters"][i][j]["origin_y"] = origin_x
+                    new_df["ecal_clusters"][i][j]["origin_y"] = origin_y
+                    new_df["ecal_clusters"][i][j]["origin_z"] = origin_z
 
         # put all of the information in one row
         photons = []
@@ -354,17 +379,22 @@ class Data_handler:
             pass
         return result
 
-# backup = df.copy()
+# filename = "C:/Users/felix/Documents/University/Thesis/big_track_electron_set_down"
+# df = Data_loader.load(filename, 0, 200)
+# # backup = df.copy()
 # dataframe = df.copy()
-# import time
+# # import time
 # handler = Data_handler(df)
 # usable = handler.return_usable(dataframe)
 # filtered_usable = handler.filter_clusters(usable)
-# dict_usable = handler.cluster_to_dict(filtered_usable)
+# dict_usable = handler.dictonarize(filtered_usable)
 # electron_usable = handler.is_electron(dict_usable)
 # class_frame = handler.prepare_classification(electron_usable)
-# class_frame.columns.shape
-# electron_usable.columns.shape
+# class_frame.shape
+# model = xgb.XGBClassifier({'nthread':4})
+# model.load_model("C:/Users/felix/Documents/University/Thesis/ElephantShrew/ElePhant_Classifier.model")
+# predicted_frame = handler.assign_prediction(electron_usable, model, class_frame)
+# # electron_usable.columns.shape
 # dict_frame = handler.assign_prediction(electron_usable, model, class_frame)
 # calc_frame = handler.calc_frame(dict_frame, n_cand=3)
 # calc_frame.columns
