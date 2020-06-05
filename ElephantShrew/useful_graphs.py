@@ -16,7 +16,7 @@ test_df.columns.tolist()
 
 test_df.columns.tolist()
 
-for i in range(10):
+for i in range(30):
     fig, ax = plt.subplots()
     ax.scatter(test_df['ECAL_cluster_x_arr'][i], test_df['ECAL_cluster_y_arr'][i], c='black', label='Clusters')
     ax.scatter(test_df['eminus_MCphotondaughters_ECAL_X'][i], test_df['eminus_MCphotondaughters_ECAL_Y'][i], c='orange', label='Photon Daughters')
@@ -25,28 +25,38 @@ for i in range(10):
     max_x = max(test_df['eminus_ECAL_TTtrack_x'][i]+test_df['eminus_ECAL_TTtrack_sprx'][i],test_df['eminus_ECAL_velotrack_x'][i]+test_df['eminus_ECAL_velotrack_sprx'][i])
     min_y =  min(test_df['eminus_ECAL_TTtrack_y'][i]-test_df['eminus_ECAL_TTtrack_spry'][i],test_df['eminus_ECAL_velotrack_y'][i]-test_df['eminus_ECAL_velotrack_spry'][i])
     max_y = max(test_df['eminus_ECAL_TTtrack_y'][i]+test_df['eminus_ECAL_TTtrack_spry'][i],test_df['eminus_ECAL_velotrack_y'][i]+test_df['eminus_ECAL_velotrack_spry'][i])
-    ax.add_patch(
-        patches.Rectangle(
-            xy=(min_x, min_y),  # point of origin.
-            width=abs(min_x-max_x),
-            height=abs(min_y-max_y),
-            linewidth=1,
-            color='red',
-            fill=False
-            )
-    )
-    plt.title("All clusters and Photon Daughters")
+    # ax.add_patch(
+    #     patches.Rectangle(
+    #         xy=(min_x, min_y),  # point of origin.
+    #         width=abs(min_x-max_x),
+    #         height=abs(min_y-max_y),
+    #         linewidth=1,
+    #         color='red',
+    #         fill=False
+    #         )
+    # )
+    # ax.plot(min_x, min_y, linewidth=1, color='red', label="Velo/TTtrack Window")
+    # # ax.plot([0,500],[1000,2000])
+    # ax.plot(((min_x+max_x)/2, test_df['eminus_MCphotondaughters_ECAL_X'][i][0]), ((min_y+max_y)/2, test_df['eminus_MCphotondaughters_ECAL_Y'][i][0]), color='blue', label='window_dist')
+    # for j in range(len(test_df['eminus_MCphotondaughters_ECAL_X'][i])):
+    #     ax.plot(((min_x+max_x)/2, test_df['eminus_MCphotondaughters_ECAL_X'][i][j]), ((min_y+max_y)/2, test_df['eminus_MCphotondaughters_ECAL_Y'][i][j]), color='blue')
+    # ax.plot((min_x, max_x), (min_y,max_y), color="green", linewidth=1, label="window_diagonal")
+    plt.xlabel("x-position in mm")
+    plt.ylabel("y-position in mm")
+    plt.title("Velo/TTrack Window with Diagonal and Distance to Daughters")
     ax.legend()
     plt.show()
 
-# abs(test_df['eminus_ECAL_TTtrack_x'][i]-test_df['eminus_ECAL_velotrack_x'][i])
-# abs(test_df['eminus_ECAL_TTtrack_y'][i]-test_df['eminus_ECAL_velotrack_y'][i]),
-#
+abs(test_df['eminus_ECAL_TTtrack_x'][i]-test_df['eminus_ECAL_velotrack_x'][i])
+abs(test_df['eminus_ECAL_TTtrack_y'][i]-test_df['eminus_ECAL_velotrack_y'][i]),
+
 # for i in range(10):
 #     fig, ax = plt.subplots()
 #     ax.scatter(test_df['ECAL_cluster_x_arr'][i], test_df['ECAL_cluster_y_arr'][i], c='black', label='Clusters', s=100)
 #     ax.scatter(test_df['ECAL_photon_x_arr'][i], test_df['ECAL_photon_y_arr'][i], c='orange', label='Photons', s=100, alpha=0.7)
-#     plt.title("Clusters and Photons")
+#     plt.title("Clusters and Photons on ECAL Screen")
+#     plt.xlabel("x-position in mm")
+#     plt.ylabel("y-position in mm")
 #     ax.legend()
 #     plt.show()
 

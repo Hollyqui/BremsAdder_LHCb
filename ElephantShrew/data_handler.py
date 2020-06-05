@@ -364,6 +364,8 @@ class Data_handler:
         # put all of the information in one row
         photons = []
         for i in range(len(new_df)):
+            for j in range(len(new_df['ecal_clusters'][i])):
+                new_df['ecal_clusters'][i][j]['label'] = False
             photons.append(pd.DataFrame(new_df['ecal_clusters'][i]).values.reshape(-1))
         np.array(photons).shape
         photon_df = pd.DataFrame(photons, index=None, columns=n_cand*pd.DataFrame(new_df['ecal_clusters'][i]).columns.tolist())

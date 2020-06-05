@@ -202,13 +202,14 @@ def plot_3D_graphic(df, i):
 
 
     # set plot dimensions
-    ax.set_ylabel("Y displacement")
-    ax.set_xlabel("X displacement")
-    ax.set_zlabel("Distance")
+    ax.set_ylabel("Y Displacement")
+    ax.set_xlabel("X Displacement")
+    ax.set_zlabel("Z Displacement")
     ax.set_xlim(-4500,4500)
     ax.set_ylim(-4500,4500)
     ax.set_zlim(0,13000)
-    plt.title(str(df['eminus_MCphotondaughters_N'][i]) + " Daughter Photon(s)")
+    plt.title("Resulting Track Reconstruction for Event")
+    # plt.title(str(df['eminus_MCphotondaughters_N'][i]) + " Daughter Photon(s)")
     plt.legend()
     plt.show()
 
